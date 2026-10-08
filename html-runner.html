@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مشغل كود HTML</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- BoxIcons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/htmlmixed/htmlmixed.min.js"></script>
+
+    <style>
+        
+        :root {
+            --primary: #ffffff;
+            --bg-body: #050505;
+            --bg-sidebar: #000000;
+            --bg-card: #0a0a0a;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --border: #222222;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); min-height: 100vh; display: flex; overflow-x: hidden; }
+
+        /* Sidebar */
+        .sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; right: 0; top: 0; z-index: 1000; transition: var(--transition); }
+        .sidebar-header { padding: 2rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); }
+        .sidebar-header i { font-size: 2rem; color: var(--primary); }
+        .sidebar-header h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.5px; }
+        .nav-menu { padding: 1.5rem 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; }
+        .nav-section-title { padding: 0.5rem 1.2rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 0.2rem; margin-top: 0.5rem; }
+        .nav-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; color: var(--text-muted); text-decoration: none; border-radius: 12px; transition: var(--transition); font-weight: 600; font-size: 1.05rem; }
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item:hover, .nav-item.active { background-color: #111111; color: var(--text-main); }
+        .nav-item.active { border-right: 4px solid var(--primary); }
+
+        /* Main Content */
+        .main-content { margin-right: 280px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; width: calc(100% - 280px); }
+        .top-header { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(5,5,5,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 90; }
+
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .mobile-toggle { display: none; font-size: 2rem; background: none; border: none; color: var(--text-main); cursor: pointer; }
+
+        .welcome-text h1 { font-size: 1.5rem; font-weight: 800; }
+        .welcome-text p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .user-profile { display: flex; align-items: center; gap: 1rem; }
+        .user-profile img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); filter: grayscale(100%); }
+        .user-info { text-align: left; }
+        .user-info h4 { font-size: 1rem; }
+        .user-info p { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Content Area */
+        .content { padding: 2rem; flex: 1; display: flex; flex-direction: column; align-items: center; }
+        footer { background: var(--bg-sidebar); padding: 2rem; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); }
+        footer a { color: var(--primary); font-weight: 700; text-decoration: none; transition: var(--transition); }
+        footer a:hover { text-decoration: underline; }
+
+        /* Overlay */
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; display: none; backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.3s ease; }
+        .sidebar-overlay.open { display: block; opacity: 1; }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-right: 0; width: 100%; }
+            .mobile-toggle { display: block; }
+            .user-info { display: none; }
+            .welcome-text h1 { font-size: 1.2rem; }
+            .welcome-text p { display: none; }
+            .top-header { padding: 1rem; }
+            .content { padding: 1rem; }
+        }
+
+        /* Base tool styling */
+        .tool-header { text-align: center; margin-bottom: 2rem; }
+        .tool-header h2 { font-size: 2rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem; }
+        .tool-container { width: 100%; max-width: 900px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; box-shadow: var(--shadow); }
+
+        .btn-primary { background: var(--primary); color: #000000; border: none; padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; transition: var(--transition); width: 100%; }
+        .btn-primary:hover { background: #e5e5e5; transform: translateY(-2px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; margin-bottom: 0.4rem; font-weight: 600; color: #dddddd; text-align: right;}
+        input[type="text"], input[type="number"], input[type="url"], select { width: 100%; padding: 0.8rem; background: #000000; border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 1rem; outline: none; transition: var(--transition); }
+        input:focus, select:focus { border-color: var(--primary); }
+
+        .dropzone { border: 2px dashed #444; border-radius: 16px; padding: 3rem 2rem; text-align: center; cursor: pointer; background: #050505; transition: var(--transition); position: relative;}
+        .dropzone:hover { border-color: var(--primary); background: #111; }
+        .dropzone i { font-size: 4rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .dropzone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class='bx bxs-layer'></i>
+            <h2>أدواتي</h2>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section-title">الأدوات العامة</div>
+            <a href="index.html" class="nav-item "><i class='bx bx-home-alt'></i> الرئيسية</a>
+            <a href="qr.html" class="nav-item "><i class='bx bx-qr-scan'></i> صانع QR Code</a>
+            <a href="pdf.html" class="nav-item "><i class='bx bxs-file-pdf'></i> استوديو PDF</a>
+            <a href="image.html" class="nav-item "><i class='bx bx-image-alt'></i> محول الصور</a>
+            <a href="ocr.html" class="nav-item "><i class='bx bx-text'></i> مستخرج النصوص</a>
+
+            <div class="nav-section-title">أدوات المطورين</div>
+            <a href="html-runner.html" class="nav-item active"><i class='bx bx-code-alt'></i> مشغل كود HTML</a>
+            <a href="developer.html" class="nav-item "><i class='bx bx-user-pin'></i> المطور</a>
+        </nav>
+    </aside>
+    
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-toggle" id="mobile-toggle"><i class='bx bx-menu'></i></button>
+                <div class="welcome-text">
+                    <h1>مشغل كود HTML 👨‍💻</h1>
+                    <p>جرب أكواد HTML و CSS و JS</p>
+                </div>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <h4>زائر</h4>
+                    <p>عضوية مجانية</p>
+                </div>
+                <img src="https://ui-avatars.com/api/?name=User&background=000&color=fff" alt="User">
+            </div>
+        </header>
+
+        
+<style>
+.workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; flex: 1; min-height: 600px; width: 100%; max-width:1400px; margin:0 auto;}
+@media (max-width: 1200px) { .workspace { grid-template-columns: 1fr; } }
+.panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow); }
+.panel-header { background: #000; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.panel-header h3 { font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem; }
+.run-btn { background: var(--primary); color: #000; border: none; padding: 0.5rem 1.2rem; border-radius: 8px; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; transition: var(--transition); }
+.run-btn:hover { background: #e5e5e5; transform: translateY(-2px); }
+.editor-container { flex: 1; position: relative; }
+.CodeMirror { position: absolute; top: 0; left: 0; width: 100%; height: 100%; font-family: 'Consolas', 'Monaco', monospace; font-size: 15px; direction: ltr; }
+.preview-container { flex: 1; background: #fff; position: relative; }
+iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
+</style>
+<div class="content" style="padding-left:1rem; padding-right:1rem;">
+    <div class="tool-header">
+        <h2>مشغل الأكواد المباشر</h2>
+        <p>بيئة تطوير متكاملة وسريعة</p>
+    </div>
+    <div class="workspace">
+        <div class="panel">
+            <div class="panel-header">
+                <h3><i class='bx bx-code-block'></i> محرر الكود</h3>
+                <button class="run-btn" id="run-btn"><i class='bx bx-play'></i> تشغيل الكود</button>
+            </div>
+            <div class="editor-container">
+                <textarea id="code-editor"><!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background: #000;
+    color: #fff;
+  }
+  .box {
+    padding: 2rem;
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 12px;
+    text-align: center;
+  }
+  button {
+    padding: 10px 20px;
+    background: #fff;
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight:bold;
+  }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1 id="title">أهلاً بك في المشغل</h1>
+    <p style="margin-bottom:1rem;">جرب الأكواد مباشرة.</p>
+    <button onclick="alert('يعمل بنجاح!')">اضغط هنا</button>
+  </div>
+</body>
+</html></textarea>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <h3><i class='bx bx-window-alt'></i> النتيجة المباشرة</h3>
+            </div>
+            <div class="preview-container">
+                <iframe id="preview-frame"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        <footer>
+            <p>تم التطوير والتصميم بواسطه <a href="https://se-abdulrahman.vercel.app/" target="_blank">abdelrahman tarek</a></p>
+        </footer>
+    </main>
+
+    <script>
+        const mobileToggle = document.getElementById('mobile-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', () => { sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); });
+            sidebarOverlay.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
+        }
+    </script>
+    
+<script>
+    var editor = CodeMirror.fromTextArea(document.getElementById("code-editor"), { mode: "htmlmixed", theme: "monokai", lineNumbers: true, autoCloseTags: true, autoCloseBrackets: true });
+    function runCode() { var code = editor.getValue(); var iframe = document.getElementById('preview-frame'); var preview = iframe.contentDocument || iframe.contentWindow.document; preview.open(); preview.write(code); preview.close(); }
+    document.getElementById('run-btn').addEventListener('click', runCode);
+    setTimeout(runCode, 500);
+</script>
+
+</body>
+</html>

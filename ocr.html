@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مستخرج النصوص (OCR)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- BoxIcons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
+    <style>
+        
+        :root {
+            --primary: #ffffff;
+            --bg-body: #050505;
+            --bg-sidebar: #000000;
+            --bg-card: #0a0a0a;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --border: #222222;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); min-height: 100vh; display: flex; overflow-x: hidden; }
+
+        /* Sidebar */
+        .sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; right: 0; top: 0; z-index: 1000; transition: var(--transition); }
+        .sidebar-header { padding: 2rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); }
+        .sidebar-header i { font-size: 2rem; color: var(--primary); }
+        .sidebar-header h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.5px; }
+        .nav-menu { padding: 1.5rem 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; }
+        .nav-section-title { padding: 0.5rem 1.2rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 0.2rem; margin-top: 0.5rem; }
+        .nav-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; color: var(--text-muted); text-decoration: none; border-radius: 12px; transition: var(--transition); font-weight: 600; font-size: 1.05rem; }
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item:hover, .nav-item.active { background-color: #111111; color: var(--text-main); }
+        .nav-item.active { border-right: 4px solid var(--primary); }
+
+        /* Main Content */
+        .main-content { margin-right: 280px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; width: calc(100% - 280px); }
+        .top-header { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(5,5,5,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 90; }
+
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .mobile-toggle { display: none; font-size: 2rem; background: none; border: none; color: var(--text-main); cursor: pointer; }
+
+        .welcome-text h1 { font-size: 1.5rem; font-weight: 800; }
+        .welcome-text p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .user-profile { display: flex; align-items: center; gap: 1rem; }
+        .user-profile img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); filter: grayscale(100%); }
+        .user-info { text-align: left; }
+        .user-info h4 { font-size: 1rem; }
+        .user-info p { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Content Area */
+        .content { padding: 2rem; flex: 1; display: flex; flex-direction: column; align-items: center; }
+        footer { background: var(--bg-sidebar); padding: 2rem; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); }
+        footer a { color: var(--primary); font-weight: 700; text-decoration: none; transition: var(--transition); }
+        footer a:hover { text-decoration: underline; }
+
+        /* Overlay */
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; display: none; backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.3s ease; }
+        .sidebar-overlay.open { display: block; opacity: 1; }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-right: 0; width: 100%; }
+            .mobile-toggle { display: block; }
+            .user-info { display: none; }
+            .welcome-text h1 { font-size: 1.2rem; }
+            .welcome-text p { display: none; }
+            .top-header { padding: 1rem; }
+            .content { padding: 1rem; }
+        }
+
+        /* Base tool styling */
+        .tool-header { text-align: center; margin-bottom: 2rem; }
+        .tool-header h2 { font-size: 2rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem; }
+        .tool-container { width: 100%; max-width: 900px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; box-shadow: var(--shadow); }
+
+        .btn-primary { background: var(--primary); color: #000000; border: none; padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; transition: var(--transition); width: 100%; }
+        .btn-primary:hover { background: #e5e5e5; transform: translateY(-2px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        .form-group { margin-bottom: 1.2rem; }
+        .form-group label { display: block; margin-bottom: 0.4rem; font-weight: 600; color: #dddddd; text-align: right;}
+        input[type="text"], input[type="number"], input[type="url"], select { width: 100%; padding: 0.8rem; background: #000000; border: 1px solid var(--border); border-radius: 8px; color: #fff; font-size: 1rem; outline: none; transition: var(--transition); }
+        input:focus, select:focus { border-color: var(--primary); }
+
+        .dropzone { border: 2px dashed #444; border-radius: 16px; padding: 3rem 2rem; text-align: center; cursor: pointer; background: #050505; transition: var(--transition); position: relative;}
+        .dropzone:hover { border-color: var(--primary); background: #111; }
+        .dropzone i { font-size: 4rem; color: var(--text-muted); margin-bottom: 1rem; }
+        .dropzone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class='bx bxs-layer'></i>
+            <h2>أدواتي</h2>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section-title">الأدوات العامة</div>
+            <a href="index.html" class="nav-item "><i class='bx bx-home-alt'></i> الرئيسية</a>
+            <a href="qr.html" class="nav-item "><i class='bx bx-qr-scan'></i> صانع QR Code</a>
+            <a href="pdf.html" class="nav-item "><i class='bx bxs-file-pdf'></i> استوديو PDF</a>
+            <a href="image.html" class="nav-item "><i class='bx bx-image-alt'></i> محول الصور</a>
+            <a href="ocr.html" class="nav-item active"><i class='bx bx-text'></i> مستخرج النصوص</a>
+
+            <div class="nav-section-title">أدوات المطورين</div>
+            <a href="html-runner.html" class="nav-item "><i class='bx bx-code-alt'></i> مشغل كود HTML</a>
+            <a href="developer.html" class="nav-item "><i class='bx bx-user-pin'></i> المطور</a>
+        </nav>
+    </aside>
+    
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-toggle" id="mobile-toggle"><i class='bx bx-menu'></i></button>
+                <div class="welcome-text">
+                    <h1>مستخرج النصوص (OCR) 📝</h1>
+                    <p>استخرج النصوص من الصور بدقة عالية</p>
+                </div>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <h4>زائر</h4>
+                    <p>عضوية مجانية</p>
+                </div>
+                <img src="https://ui-avatars.com/api/?name=User&background=000&color=fff" alt="User">
+            </div>
+        </header>
+
+        
+<style>
+.ocr-container { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; width:100%; }
+@media (max-width: 992px) { .ocr-container { grid-template-columns: 1fr; } }
+.preview-img { max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 1rem; display: none; margin: 1rem auto 0; }
+textarea { width: 100%; height: 200px; background: #000; border: 1px solid var(--border); border-radius: 12px; color: #fff; padding: 1rem; resize: none; outline: none; margin-top:1rem;}
+textarea:focus { border-color: var(--primary); }
+</style>
+<div class="content">
+    <div class="tool-header">
+        <h2>استخراج النص من الصورة</h2>
+        <p>يدعم اللغة العربية والإنجليزية بفضل تقنية Tesseract.js</p>
+    </div>
+    <div class="tool-container" style="max-width: 1000px;">
+        <div class="ocr-container">
+            <div class="dropzone" id="dropzone">
+                <input type="file" id="image-input" accept="image/*">
+                <div id="dropzone-text">
+                    <i class='bx bx-image-add'></i>
+                    <h3>اختر أو اسحب صورة هنا</h3>
+                </div>
+                <img id="image-preview" class="preview-img" src="" alt="Preview">
+            </div>
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+                <div class="form-group" style="margin-bottom:0;">
+                    <label>لغة النص في الصورة:</label>
+                    <select id="lang-select">
+                        <option value="ara">العربية</option>
+                        <option value="eng">الإنجليزية</option>
+                        <option value="ara+eng" selected>عربي + إنجليزي</option>
+                    </select>
+                </div>
+                <button class="btn-primary" id="extract-btn" disabled><i class='bx bx-scan'></i> استخراج النص</button>
+                <div id="status" style="display:none; text-align:center; margin-top:0.5rem;"><i class='bx bx-loader-alt bx-spin'></i> جاري الاستخراج...</div>
+                <textarea id="result-text" placeholder="سيظهر النص المستخرج هنا..." readonly></textarea>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        <footer>
+            <p>تم التطوير والتصميم بواسطه <a href="https://se-abdulrahman.vercel.app/" target="_blank">abdelrahman tarek</a></p>
+        </footer>
+    </main>
+
+    <script>
+        const mobileToggle = document.getElementById('mobile-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', () => { sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); });
+            sidebarOverlay.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
+        }
+    </script>
+    
+<script>
+    const imageInput = document.getElementById('image-input'), imagePreview = document.getElementById('image-preview'), dropzoneText = document.getElementById('dropzone-text'), extractBtn = document.getElementById('extract-btn'), resultText = document.getElementById('result-text'), langSelect = document.getElementById('lang-select'), statusEl = document.getElementById('status');
+    let selectedImage = null;
+    imageInput.addEventListener('change', function(e) { const file = e.target.files[0]; if (!file) return; selectedImage = file; const reader = new FileReader(); reader.onload = function(event) { imagePreview.src = event.target.result; imagePreview.style.display = 'block'; dropzoneText.style.display = 'none'; extractBtn.disabled = false; resultText.value = ''; }; reader.readAsDataURL(file); });
+    extractBtn.addEventListener('click', () => { if (!selectedImage) return; extractBtn.disabled = true; statusEl.style.display = 'block'; resultText.value = ''; Tesseract.recognize(selectedImage, langSelect.value).then(({ data: { text } }) => { resultText.value = text; statusEl.style.display = 'none'; extractBtn.disabled = false; }).catch(err => { statusEl.innerHTML = "حدث خطأ"; setTimeout(() => statusEl.style.display = 'none', 3000); extractBtn.disabled = false; }); });
+</script>
+
+</body>
+</html>

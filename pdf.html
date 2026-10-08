@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استوديو PDF</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- BoxIcons -->
+    <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <style>
+        
+        :root {
+            --primary: #ffffff;
+            --bg-body: #050505;
+            --bg-sidebar: #000000;
+            --bg-card: #0a0a0a;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+            --border: #222222;
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); min-height: 100vh; display: flex; overflow-x: hidden; }
+
+        /* Sidebar */
+        .sidebar { width: 280px; background-color: var(--bg-sidebar); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; height: 100vh; right: 0; top: 0; z-index: 1000; transition: var(--transition); }
+        .sidebar-header { padding: 2rem 1.5rem; display: flex; align-items: center; gap: 1rem; border-bottom: 1px solid var(--border); }
+        .sidebar-header i { font-size: 2rem; color: var(--primary); }
+        .sidebar-header h2 { font-size: 1.5rem; font-weight: 800; letter-spacing: 0.5px; }
+        .nav-menu { padding: 1.5rem 1rem; flex: 1; display: flex; flex-direction: column; gap: 0.5rem; overflow-y: auto; }
+        .nav-section-title { padding: 0.5rem 1.2rem; font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 0.2rem; margin-top: 0.5rem; }
+        .nav-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.2rem; color: var(--text-muted); text-decoration: none; border-radius: 12px; transition: var(--transition); font-weight: 600; font-size: 1.05rem; }
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item:hover, .nav-item.active { background-color: #111111; color: var(--text-main); }
+        .nav-item.active { border-right: 4px solid var(--primary); }
+
+        /* Main Content */
+        .main-content { margin-right: 280px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; width: calc(100% - 280px); }
+        .top-header { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; background: rgba(5,5,5,0.8); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 90; }
+
+        .header-left { display: flex; align-items: center; gap: 1rem; }
+        .mobile-toggle { display: none; font-size: 2rem; background: none; border: none; color: var(--text-main); cursor: pointer; }
+
+        .welcome-text h1 { font-size: 1.5rem; font-weight: 800; }
+        .welcome-text p { color: var(--text-muted); font-size: 0.9rem; }
+
+        .user-profile { display: flex; align-items: center; gap: 1rem; }
+        .user-profile img { width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--primary); filter: grayscale(100%); }
+        .user-info { text-align: left; }
+        .user-info h4 { font-size: 1rem; }
+        .user-info p { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* Content Area */
+        .content { padding: 2rem; flex: 1; display: flex; flex-direction: column; align-items: center; }
+        footer { background: var(--bg-sidebar); padding: 2rem; text-align: center; border-top: 1px solid var(--border); color: var(--text-muted); }
+        footer a { color: var(--primary); font-weight: 700; text-decoration: none; transition: var(--transition); }
+        footer a:hover { text-decoration: underline; }
+
+        /* Overlay */
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; display: none; backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.3s ease; }
+        .sidebar-overlay.open { display: block; opacity: 1; }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .sidebar { transform: translateX(100%); }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-right: 0; width: 100%; }
+            .mobile-toggle { display: block; }
+            .user-info { display: none; }
+            .welcome-text h1 { font-size: 1.2rem; }
+            .welcome-text p { display: none; }
+            .top-header { padding: 1rem; }
+            .content { padding: 1rem; }
+        }
+
+        /* Base tool styling */
+        .tool-header { text-align: center; margin-bottom: 2rem; }
+        .tool-header h2 { font-size: 2rem; font-weight: 800; color: var(--primary); margin-bottom: 0.5rem; }
+        .tool-container { width: 100%; max-width: 900px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem; box-shadow: var(--shadow); }
+
+        .btn-primary { background: var(--primary); color: #000000; border: none; padding: 1rem 2rem; font-size: 1.1rem; font-weight: 700; border-radius: 12px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; transition: var(--transition); width: 100%; }
+        .btn-primary:hover { background: #e5e5e5; transform: translateY(-2px); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    </style>
+</head>
+<body>
+    
+    <!-- Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <i class='bx bxs-layer'></i>
+            <h2>أدواتي</h2>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-section-title">الأدوات العامة</div>
+            <a href="index.html" class="nav-item "><i class='bx bx-home-alt'></i> الرئيسية</a>
+            <a href="qr.html" class="nav-item "><i class='bx bx-qr-scan'></i> صانع QR Code</a>
+            <a href="pdf.html" class="nav-item active"><i class='bx bxs-file-pdf'></i> استوديو PDF</a>
+            <a href="image.html" class="nav-item "><i class='bx bx-image-alt'></i> محول الصور</a>
+            <a href="ocr.html" class="nav-item "><i class='bx bx-text'></i> مستخرج النصوص</a>
+
+            <div class="nav-section-title">أدوات المطورين</div>
+            <a href="html-runner.html" class="nav-item "><i class='bx bx-code-alt'></i> مشغل كود HTML</a>
+            <a href="developer.html" class="nav-item "><i class='bx bx-user-pin'></i> المطور</a>
+        </nav>
+    </aside>
+    
+
+    <main class="main-content">
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-toggle" id="mobile-toggle"><i class='bx bx-menu'></i></button>
+                <div class="welcome-text">
+                    <h1>استوديو المستندات الذكي 👋</h1>
+                    <p>معالجة وتعديل ملفات PDF والصور بكل خصوصية وأمان.</p>
+                </div>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <h4>زائر</h4>
+                    <p>عضوية مجانية</p>
+                </div>
+                <img src="https://ui-avatars.com/api/?name=User&background=000&color=fff" alt="User">
+            </div>
+        </header>
+
+        
+<style>
+.tabs-nav { display: flex; gap: 10px; background: var(--bg-card); padding: 8px; border-radius: 12px; border: 1px solid var(--border); overflow-x: auto; width: 100%; max-width: 1000px; margin-bottom:1rem;}
+.tab-btn { flex: 1; padding: 12px 18px; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 0.95rem; border-radius: 8px; cursor: pointer; transition: var(--transition); white-space: nowrap; text-align: center; }
+.tab-btn:hover { background: #111; color: var(--text-main); }
+.tab-btn.active { background: var(--primary); color: #000; }
+.tab-content { display: none; width: 100%; max-width: 1000px; }
+.tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+.dropzone { border: 2px dashed #444; border-radius: 16px; padding: 36px 20px; text-align: center; cursor: pointer; background: #050505; transition: var(--transition); position: relative; margin-bottom: 20px; width: 100%;}
+.dropzone:hover { border-color: var(--primary); background: #111; }
+.dropzone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.dropzone-icon { font-size: 3rem; color: var(--primary); margin-bottom: 8px; display: block; }
+.dropzone h3 { margin-bottom: 0.5rem; color: #fff; }
+.dropzone p { color: var(--text-muted); }
+.grid-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; margin-top: 20px; margin-bottom: 24px; width:100%;}
+.grid-item { background: #111; border: 1px solid var(--border); border-radius: 12px; padding: 10px; position: relative; cursor: grab; text-align: center; }
+.grid-item img, .grid-item canvas { width: 100%; height: 190px; object-fit: contain; border-radius: 8px; background: #fff; }
+.grid-item .badge { display: inline-block; margin-top: 6px; font-size: 0.8rem; color: var(--text-muted); font-weight: bold; }
+.btn-delete { position: absolute; top: 6px; left: 6px; background: #ef4444; color: #fff; border: none; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 0.9rem; z-index: 10; }
+.btn-secondary { background: #111; color: var(--text-main); border: 1px solid var(--border); padding: 12px 24px; font-size: 1rem; font-weight: 700; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: var(--transition); }
+.btn-secondary:hover { background: #222; }
+.actions-bar { display: flex; justify-content: flex-end; gap: 12px; align-items: center; border-top: 1px solid var(--border); padding-top: 18px; flex-wrap: wrap; width:100%; }
+.settings-group { display: flex; flex-direction: column; gap: 6px; width: 100%;}
+select { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; outline: none; background: #000; color: #fff; }
+.loader { display: none; align-items: center; gap: 10px; color: var(--primary); font-weight: bold; }
+.status-msg { color: var(--primary); font-weight: bold; text-align: center; margin: 10px 0; display: none; }
+</style>
+<div class="content" style="align-items: center;">
+    <div class="tool-header">
+        <h2>استوديو المستندات الذكي</h2>
+        <p>معالجة وتعديل ملفات PDF والصور</p>
+    </div>
+
+    <nav class="tabs-nav">
+        <button class="tab-btn active" onclick="switchTab('edit')">إدارة الصفحات</button>
+        <button class="tab-btn" onclick="switchTab('img2pdf')">صور إلى PDF</button>
+        <button class="tab-btn" onclick="switchTab('pdf2img')">PDF إلى صور</button>
+        <button class="tab-btn" onclick="switchTab('compress')">ضغط PDF</button>
+    </nav>
+
+    <!-- 1: إدارة الصفحات -->
+    <div id="tab-edit" class="tab-content active">
+        <div class="tool-container" style="max-width:100%;">
+            <div class="dropzone" id="edit-dropzone">
+                <input type="file" id="edit-pdf-input" accept="application/pdf">
+                <i class='bx bxs-file-pdf dropzone-icon'></i>
+                <h3>اختر ملف PDF للبدء</h3>
+            </div>
+            <div id="edit-status" class="status-msg">جاري قراءة الملف...</div>
+            <div id="edit-workspace" style="display:none; width:100%;">
+                <div class="actions-bar" style="border:none; padding-top:0; justify-content: flex-start; margin-bottom: 15px;">
+                    <input type="file" id="add-more-pdf" accept="application/pdf" style="display: none;" multiple>
+                    <button class="btn-secondary" onclick="document.getElementById('add-more-pdf').click()"><i class='bx bx-plus'></i> إضافة ملف</button>
+                    <input type="file" id="add-more-img" accept="image/png, image/jpeg, image/webp" style="display: none;" multiple>
+                    <button class="btn-secondary" onclick="document.getElementById('add-more-img').click()"><i class='bx bx-image-add'></i> إضافة صور</button>
+                </div>
+                <div class="grid-preview" id="edit-grid"></div>
+                <div class="actions-bar">
+                    <span class="loader" id="edit-loader">جاري الحفظ...</span>
+                    <button class="btn-primary" onclick="saveEditedPDF()" style="width:auto;"><i class='bx bxs-save'></i> حفظ المستند</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2: صور إلى PDF -->
+    <div id="tab-img2pdf" class="tab-content">
+        <div class="tool-container" style="max-width:100%;">
+            <div class="dropzone">
+                <input type="file" id="images-input" accept="image/png, image/jpeg, image/webp" multiple>
+                <i class='bx bx-images dropzone-icon'></i>
+                <h3>اختر الصور لتحويلها</h3>
+            </div>
+            <div class="settings-group" style="margin-bottom:1rem;">
+                <label>حجم الصفحة:</label>
+                <select id="img-pagesize"><option value="fit">ملائمة حجم الصورة</option><option value="a4">صفحة A4</option></select>
+            </div>
+            <div class="grid-preview" id="images-grid"></div>
+            <div class="actions-bar" id="images-actions" style="display:none;">
+                <span class="loader" id="images-loader">جاري التصدير...</span>
+                <button class="btn-primary" onclick="generatePDFFromImages()" style="width:auto;">تحميل PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3: PDF إلى صور -->
+    <div id="tab-pdf2img" class="tab-content">
+        <div class="tool-container" style="max-width:100%;">
+            <div class="dropzone">
+                <input type="file" id="pdf2img-input" accept="application/pdf">
+                <i class='bx bxs-file-import dropzone-icon'></i>
+                <h3>اختر ملف PDF لاستخراج صوره</h3>
+            </div>
+            <div id="pdf2img-status" class="status-msg">جاري الاستخراج...</div>
+            <div class="grid-preview" id="pdf2img-grid"></div>
+            <div class="actions-bar" id="pdf2img-actions" style="display:none;">
+                <span class="loader" id="pdf2img-loader">جاري التجهيز...</span>
+                <button class="btn-primary" onclick="downloadAllImagesZip()" style="width:auto;">تنزيل الصور (ZIP)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4: ضغط PDF -->
+    <div id="tab-compress" class="tab-content">
+        <div class="tool-container" style="max-width:100%;">
+            <div class="dropzone">
+                <input type="file" id="compress-input" accept="application/pdf">
+                <i class='bx bx-compress dropzone-icon'></i>
+                <h3>اختر ملف PDF لضغطه</h3>
+            </div>
+            <div id="compress-status" class="status-msg">تم استلام الملف وجاهز للضغط.</div>
+            <div class="settings-group" style="margin-bottom:1rem;">
+                <label>مستوى الضغط:</label>
+                <select id="compress-quality">
+                    <option value="0.75">ضغط خفيف</option>
+                    <option value="0.55" selected>ضغط متوازن</option>
+                    <option value="0.35">ضغط قوي</option>
+                </select>
+            </div>
+            <div class="actions-bar" id="compress-actions" style="display:none;">
+                <span class="loader" id="compress-loader">جاري الضغط...</span>
+                <button class="btn-primary" onclick="processCompression()" style="width:auto;">بدء الضغط</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+        <footer>
+            <p>تم التطوير والتصميم بواسطه <a href="https://se-abdulrahman.vercel.app/" target="_blank">abdelrahman tarek</a></p>
+        </footer>
+    </main>
+
+    <script>
+        const mobileToggle = document.getElementById('mobile-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        if (mobileToggle) {
+            mobileToggle.addEventListener('click', () => { sidebar.classList.add('open'); sidebarOverlay.classList.add('open'); });
+            sidebarOverlay.addEventListener('click', () => { sidebar.classList.remove('open'); sidebarOverlay.classList.remove('open'); });
+        }
+    </script>
+    
+<script>
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+    function switchTab(tabId) { document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active')); event.target.classList.add('active'); document.getElementById('tab-' + tabId).classList.add('active'); }
+    function triggerDownload(blob, filename) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }
+
+    let pdfSources = {}, imageSources = {}, imageFilesMetadata = {};
+    new Sortable(document.getElementById('edit-grid'), { animation: 180 });
+
+    async function loadPdfToGrid(file) {
+        document.getElementById('edit-status').style.display = 'block';
+        try {
+            const fileBytes = await file.arrayBuffer();
+            const fileId = 'pdf_' + Math.random().toString(36).substr(2, 9);
+            pdfSources[fileId] = fileBytes;
+            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(fileBytes) }).promise;
+            const editGrid = document.getElementById('edit-grid');
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 0.4 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width; canvas.height = viewport.height;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                const card = document.createElement('div');
+                card.className = 'grid-item'; card.dataset.type = 'pdf'; card.dataset.fileId = fileId; card.dataset.pageIndex = i - 1; 
+                card.innerHTML = `<button class="btn-delete" onclick="this.parentElement.remove()">✕</button>`;
+                card.appendChild(canvas);
+                const badge = document.createElement('div'); badge.className = 'badge'; badge.innerText = `صفحة ${i}`;
+                card.appendChild(badge);
+                editGrid.appendChild(card);
+            }
+            document.getElementById('edit-workspace').style.display = 'block'; document.getElementById('edit-dropzone').style.display = 'none';
+        } catch (err) { alert('خطأ'); }
+        document.getElementById('edit-status').style.display = 'none';
+    }
+
+    async function loadImageToGrid(file) {
+        document.getElementById('edit-status').style.display = 'block';
+        try {
+            const fileBytes = await file.arrayBuffer();
+            const fileId = 'img_' + Math.random().toString(36).substr(2, 9);
+            imageSources[fileId] = fileBytes; imageFilesMetadata[fileId] = { type: file.type, name: file.name };
+            const dataUrl = await new Promise(res => { const r = new FileReader(); r.onload = e => res(e.target.result); r.readAsDataURL(file); });
+            const editGrid = document.getElementById('edit-grid');
+            const card = document.createElement('div'); card.className = 'grid-item'; card.dataset.type = 'image'; card.dataset.fileId = fileId;
+            const img = document.createElement('img'); img.src = dataUrl;
+            card.innerHTML = `<button class="btn-delete" onclick="this.parentElement.remove()">✕</button>`;
+            card.appendChild(img); editGrid.appendChild(card);
+            document.getElementById('edit-workspace').style.display = 'block'; document.getElementById('edit-dropzone').style.display = 'none';
+        } catch (err) {}
+        document.getElementById('edit-status').style.display = 'none';
+    }
+
+    document.getElementById('edit-pdf-input').addEventListener('change', (e) => { if (e.target.files[0]) loadPdfToGrid(e.target.files[0]); });
+    document.getElementById('add-more-pdf').addEventListener('change', async (e) => { for (const f of Array.from(e.target.files)) await loadPdfToGrid(f); });
+    document.getElementById('add-more-img').addEventListener('change', async (e) => { for (const f of Array.from(e.target.files)) await loadImageToGrid(f); });
+
+    async function saveEditedPDF() {
+        document.getElementById('edit-loader').style.display = 'inline-flex';
+        try {
+            const cards = document.querySelectorAll('#edit-grid .grid-item');
+            if (!cards.length) return;
+            const newDoc = await PDFLib.PDFDocument.create(), loadedPdfDocs = {};
+            for (const card of cards) {
+                const type = card.dataset.type, fId = card.dataset.fileId;
+                if (type === 'pdf') {
+                    if (!loadedPdfDocs[fId]) loadedPdfDocs[fId] = await PDFLib.PDFDocument.load(pdfSources[fId]);
+                    const [p] = await newDoc.copyPages(loadedPdfDocs[fId], [parseInt(card.dataset.pageIndex)]);
+                    newDoc.addPage(p);
+                } else if (type === 'image') {
+                    const fObj = imageFilesMetadata[fId];
+                    let img = (fObj.type === 'image/jpeg' || fObj.name.match(/\.(jpe?g)$/i)) ? await newDoc.embedJpg(imageSources[fId]) : await newDoc.embedPng(imageSources[fId]);
+                    const page = newDoc.addPage([img.width, img.height]);
+                    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                }
+            }
+            triggerDownload(new Blob([await newDoc.save()], { type: 'application/pdf' }), 'merged.pdf');
+        } catch (err) {}
+        document.getElementById('edit-loader').style.display = 'none';
+    }
+
+    let imageFilesList = [];
+    new Sortable(document.getElementById('images-grid'), { animation: 180 });
+    document.getElementById('images-input').addEventListener('change', (e) => {
+        Array.from(e.target.files).forEach((f) => {
+            const id = 'img_' + Math.random().toString(36).substr(2, 9);
+            imageFilesList.push({ id, file: f });
+            const r = new FileReader();
+            r.onload = (ev) => {
+                const card = document.createElement('div'); card.className = 'grid-item'; card.dataset.id = id;
+                const img = document.createElement('img'); img.src = ev.target.result;
+                card.innerHTML = `<button class="btn-delete" onclick="imageFilesList=imageFilesList.filter(i=>i.id!=='${id}');this.parentElement.remove();if(!document.querySelectorAll('#images-grid .grid-item').length)document.getElementById('images-actions').style.display='none';">✕</button>`;
+                card.appendChild(img); document.getElementById('images-grid').appendChild(card);
+            };
+            r.readAsDataURL(f);
+        });
+        document.getElementById('images-actions').style.display = 'flex';
+    });
+
+    async function generatePDFFromImages() {
+        document.getElementById('images-loader').style.display = 'inline-flex';
+        try {
+            const pageMode = document.getElementById('img-pagesize').value;
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            for (const card of document.querySelectorAll('#images-grid .grid-item')) {
+                const item = imageFilesList.find(i => i.id === card.dataset.id);
+                if (!item) continue;
+                const bytes = await item.file.arrayBuffer();
+                let img = (item.file.type === 'image/jpeg' || item.file.name.match(/\.(jpe?g)$/i)) ? await pdfDoc.embedJpg(bytes) : await pdfDoc.embedPng(bytes);
+                let page;
+                if (pageMode === 'a4') {
+                    page = pdfDoc.addPage([595.28, 841.89]);
+                    const scale = Math.min(555.28 / img.width, 801.89 / img.height, 1);
+                    page.drawImage(img, { x: (595.28 - img.width*scale)/2, y: (841.89 - img.height*scale)/2, width: img.width*scale, height: img.height*scale });
+                } else {
+                    page = pdfDoc.addPage([img.width, img.height]);
+                    page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
+                }
+            }
+            triggerDownload(new Blob([await pdfDoc.save()], { type: 'application/pdf' }), 'images.pdf');
+        } catch (err) {}
+        document.getElementById('images-loader').style.display = 'none';
+    }
+
+    let extractedImageBlobs = [];
+    document.getElementById('pdf2img-input').addEventListener('change', async (e) => {
+        if (!e.target.files[0]) return;
+        document.getElementById('pdf2img-status').style.display = 'block'; document.getElementById('pdf2img-actions').style.display = 'none';
+        const grid = document.getElementById('pdf2img-grid'); grid.innerHTML = ''; extractedImageBlobs = [];
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await e.target.files[0].arrayBuffer()) }).promise;
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i), viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            canvas.toBlob((blob) => { extractedImageBlobs.push({ index: i, blob }); }, 'image/jpeg', 0.9);
+            const card = document.createElement('div'); card.className = 'grid-item'; card.appendChild(canvas);
+            const l = document.createElement('div'); l.className = 'badge'; l.innerText = `صفحة ${i}`; card.appendChild(l);
+            grid.appendChild(card);
+        }
+        document.getElementById('pdf2img-status').style.display = 'none'; document.getElementById('pdf2img-actions').style.display = 'flex';
+    });
+
+    async function downloadAllImagesZip() {
+        document.getElementById('pdf2img-loader').style.display = 'inline-flex';
+        const zip = new JSZip();
+        extractedImageBlobs.forEach(item => zip.file(`page_${item.index}.jpg`, item.blob));
+        triggerDownload(await zip.generateAsync({ type: 'blob' }), 'pages.zip');
+        document.getElementById('pdf2img-loader').style.display = 'none';
+    }
+
+    let compressFileBytes = null;
+    document.getElementById('compress-input').addEventListener('change', async (e) => { if (e.target.files[0]) { compressFileBytes = await e.target.files[0].arrayBuffer(); document.getElementById('compress-status').style.display = 'block'; document.getElementById('compress-actions').style.display = 'flex'; } });
+
+    async function processCompression() {
+        document.getElementById('compress-loader').style.display = 'inline-flex';
+        try {
+            const q = parseFloat(document.getElementById('compress-quality').value);
+            const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(compressFileBytes) }).promise;
+            const newDoc = await PDFLib.PDFDocument.create();
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i), viewport = page.getViewport({ scale: q > 0.6 ? 1.3 : 1.0 });
+                const canvas = document.createElement('canvas'); canvas.width = viewport.width; canvas.height = viewport.height;
+                await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                const img = await newDoc.embedJpg(await fetch(canvas.toDataURL('image/jpeg', q)).then(r => r.arrayBuffer()));
+                const p = newDoc.addPage([viewport.width, viewport.height]);
+                p.drawImage(img, { x: 0, y: 0, width: viewport.width, height: viewport.height });
+            }
+            triggerDownload(new Blob([await newDoc.save()], { type: 'application/pdf' }), 'compressed.pdf');
+        } catch (err) {}
+        document.getElementById('compress-loader').style.display = 'none';
+    }
+</script>
+
+</body>
+</html>
